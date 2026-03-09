@@ -1,3 +1,5 @@
+THIS IS A PUBLIC REPOSITORY
+
 Correlate NTP/POSIX clock device events with GPS/TAI/CSAC events.
 
 AGPL
