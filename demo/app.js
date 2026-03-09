@@ -463,8 +463,8 @@ function renderSim() {
   el.atomicHealth.textContent = atomicInv > 0 || atomicNeg > 0 ? "At risk" : "OK";
   el.atomicHealth.className = `badge ${atomicInv > 0 || atomicNeg > 0 ? "bad" : "good"}`;
 
-  el.civilStats.textContent = `Reordered events: ${civilInv}, negative per-sensor dt: ${civilNeg}`;
-  el.atomicStats.textContent = `Reordered events: ${atomicInv}, negative per-sensor dt: ${atomicNeg}`;
+  el.civilStats.textContent = `Reordered events: ${civilInv}, negative per-sensor dt: ${civilNeg}, replay confidence: degraded`;
+  el.atomicStats.textContent = `Reordered events: ${atomicInv}, negative per-sensor dt: ${atomicNeg}, replay confidence: stable`;
 
   const snippetRows = events
     .filter((e) => e.trueMs >= 3000 && e.trueMs <= 3560)
@@ -474,7 +474,7 @@ function renderSim() {
       return `${e.sensor.padEnd(5)} true=${e.trueMs.toFixed(1).padStart(7)}  civil=${e.civilMs.toFixed(1).padStart(7)}  atomic=${e.atomicMs.toFixed(1).padStart(7)}${civilFlag}`;
     });
   el.simSnippet.textContent = [
-    "// Around correction window, civil timestamps can move relative to true order",
+    "// Correction windows can break durable correlation across nodes and sensor classes",
     ...snippetRows,
   ].join("\n");
 
@@ -494,8 +494,8 @@ function renderLive() {
   const ntpBase = unix + unixNtp1900Offset;
   const taiUtcSeconds = (tai - ntpBase) / 1000;
   const gpsUtcSeconds = taiUtcSeconds + gpsTaiOffsetSeconds;
-  el.taiNowDelta.textContent = `TAI-UTC now: ${fmtSeconds(taiUtcSeconds)}`;
-  el.gpsNowDelta.textContent = `GPS-UTC now: ${fmtSeconds(gpsUtcSeconds)}`;
+  el.taiNowDelta.textContent = `Delta TAI-UTC now: ${fmtSeconds(taiUtcSeconds)}`;
+  el.gpsNowDelta.textContent = `Delta GPS-UTC now: ${fmtSeconds(gpsUtcSeconds)}`;
 }
 
 function bindEvents() {

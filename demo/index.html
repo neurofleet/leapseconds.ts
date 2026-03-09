@@ -27,7 +27,7 @@
           <div id="unixNowIso" class="subvalue">-</div>
         </article>
         <article class="metric tai">
-          <h3>TAI1900</h3>
+          <h3>TAI1900 - International Atomic Time</h3>
           <div id="taiNow" class="value">-</div>
           <div id="taiNowDelta" class="subvalue">-</div>
         </article>
@@ -150,8 +150,15 @@
     <section class="card">
       <h2>Why NTP/POSIX Fails for Swarm SLAM</h2>
       <p class="small">
-        Multi-agent sensor fusion depends on strict event ordering. Civil clock adjustments can create backwards time steps or cross-agent reordering.
+        Swarm SLAM needs durable, cross-platform timestamps that stay comparable over years and across data types. POSIX/NTP civil time is not a final canonical format for that job.
       </p>
+      <ul class="future-list">
+        <li>Long-horizon correlation suffers when clocks are stepped/smeared differently across hosts.</li>
+        <li>Astronomy, ephemeris, and GPS feeds require explicit leap-second handling for correct UTC alignment.</li>
+        <li>No new leap second has occurred since 2017-01-01, so many stacks are operationally "cold" on leap events.</li>
+        <li>A first-ever negative leap second remains possible, so discontinuity handling should be treated as a safety case, not an edge case.</li>
+        <li>Canonical storage in TAI/GPS-like monotonic time reduces ambiguity and improves replayability.</li>
+      </ul>
       <div class="sim-grid">
         <article>
           <h3>Civil Timeline (NTP/POSIX)</h3>
