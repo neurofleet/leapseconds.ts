@@ -2,11 +2,11 @@ Correlate NTP/POSIX clock device events with GPS/TAI/CSAC events.
 
 AGPL
 
+```typescript
 // src: https://maia.usno.navy.mil/ser7/tai-utc.dat
 // src: https://hpiers.obspm.fr/eop-pc/earthor/utc/TAI-UTC_tab.html
-// see: computed/tai_utc_mjd_expanded.csv for methodology
+// see: astar-pro/utils/time/computed/tai_utc_mjd_expanded.csv for methodology
 
-```typescript
 // NTP 1900 seconds,  leap seconds, delta/day
 const truth =
 [
