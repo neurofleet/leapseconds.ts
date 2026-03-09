@@ -165,8 +165,7 @@ label {
 }
 
 input,
-select,
-button {
+select {
   border-radius: 8px;
   border: 1px solid var(--line);
   background: #0c1724;
@@ -175,18 +174,19 @@ button {
   min-height: 2.2rem;
 }
 
-button {
-  background: linear-gradient(180deg, #264e85, #1a3c68);
-  border-color: #2c5b97;
-  cursor: pointer;
-  font-weight: 600;
+input.invalid {
+  border-color: #c95a5a;
+  box-shadow: 0 0 0 1px rgba(201, 90, 90, 0.25);
 }
 
-.error {
+.validation {
+  min-height: 1.05rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.validation.error {
   color: var(--bad);
-  min-height: 1.25rem;
-  margin: 0.5rem 0;
-  font-size: 0.88rem;
 }
 
 .result-grid {
@@ -247,6 +247,20 @@ button {
   width: 2px;
   background: linear-gradient(180deg, #f7e48a, #ffc857);
   box-shadow: 0 0 10px rgba(255, 200, 87, 0.6);
+}
+
+.timeline-graph-wrap {
+  margin-top: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0a1523;
+  padding: 0.45rem;
+}
+
+.timeline-graph {
+  width: 100%;
+  height: 170px;
+  display: block;
 }
 
 .sim-grid {
@@ -340,6 +354,22 @@ button {
   background: #0b1521;
   color: #b8d1f0;
   overflow: auto;
+}
+
+.future-list {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.2rem;
+  color: #cfe0f7;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.source-links a {
+  color: #9ecbff;
+}
+
+.source-links a:hover {
+  color: #cde4ff;
 }
 
 @media (max-width: 650px) {

@@ -10,7 +10,7 @@
   <div class="bg-grid" aria-hidden="true"></div>
   <header class="page-header">
     <p class="kicker">Leap-Second Time Lab</p>
-    <h1>TAI/GPS Time for Networked Swarm SLAM</h1>
+    <h1>TAI/GPS Time for Networked Collaborative SLAM</h1>
     <p class="subtitle">
       Compare POSIX/NTP civil time with atomic-correlated time to see why event ordering can fail in moving multi-agent systems.
     </p>
@@ -51,18 +51,19 @@
             <option value="lastLeap">Last leap insertion (2017-01-01)</option>
             <option value="custom">Custom input</option>
           </select>
+          <span id="presetValidation" class="validation" aria-live="polite"></span><!-- this is a spacer to preserve layout consistency -->
         </label>
         <label>
           ISO UTC
           <input id="isoInput" type="text" placeholder="2017-01-01T00:00:00Z">
+          <span id="isoValidation" class="validation" aria-live="polite"></span>
         </label>
         <label>
           Unix ms
           <input id="unixInput" type="number" placeholder="1483228800000">
+          <span id="unixValidation" class="validation" aria-live="polite"></span>
         </label>
-        <button id="convertBtn" type="button">Convert</button>
       </div>
-      <p id="convertError" class="error" role="alert"></p>
       <div class="result-grid">
         <div>
           <span class="label">Selected Unix</span>
@@ -105,6 +106,44 @@
       <h2>Historical Leap Timeline</h2>
       <div id="timeline" class="timeline"></div>
       <p id="timelineCaption" class="small muted"></p>
+      <div class="timeline-graph-wrap">
+        <canvas id="timelineGraph" class="timeline-graph" aria-label="TAI minus UTC offset over time"></canvas>
+      </div>
+      <p id="timelineGraphCaption" class="small muted"></p>
+    </section>
+
+    <section class="card">
+      <h2>Future Outlook For This Library</h2>
+      <p class="small">
+        Timekeeping policy is shifting, but the core risk profile for this table-driven implementation is still favorable.
+      </p>
+      <ul class="future-list">
+        <li>
+          Earth rotation is variable (it can speed up and slow down), so leap-second pressure can change direction.
+        </li>
+        <li>
+          A negative leap second is possible and has never been executed in production UTC.
+        </li>
+        <li>
+          A 2024 peer-reviewed analysis projects UTC could need its first negative step by around 2029 if current rotation trends continue.
+        </li>
+        <li>
+          Current policy work targets increasing the allowed UT1-UTC bound by or before 2035, with the next formal CGPM step in 2026.
+        </li>
+        <li>
+          Practical implication for this code: likely zero or very few future table updates, with a low-probability scenario of one negative step before policy transition.
+        </li>
+      </ul>
+      <p class="small muted">
+        As of 2026-01-06 (IERS Bulletin C 71): no leap second is scheduled at the end of June 2026.
+      </p>
+      <p class="small muted source-links">
+        Sources:
+        <a href="https://datacenter.iers.org/data/latestVersion/bulletinC.txt" target="_blank" rel="noopener noreferrer">IERS Bulletin C 71</a>,
+        <a href="https://www.nist.gov/pml/time-and-frequency-division/leap-seconds-faqs" target="_blank" rel="noopener noreferrer">NIST Leap Seconds FAQ</a>,
+        <a href="https://www.bipm.org/en/cgpm-2022/resolution-4" target="_blank" rel="noopener noreferrer">CGPM Resolution 4 (2022)</a>,
+        <a href="https://doi.org/10.1038/s41586-024-07170-0" target="_blank" rel="noopener noreferrer">Nature 2024 (Agnew)</a>.
+      </p>
     </section>
 
     <section class="card">

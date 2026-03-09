@@ -1,5 +1,7 @@
 const unixNtp1900Offset = 2_208_988_800_000;
 const gpsTaiOffsetSeconds = -19;
+const timelineStartUnix = Date.parse("1960-01-01T00:00:00Z");
+const timelineEndUnix = Date.parse("2026-01-01T00:00:00Z");
 
 const leapMarks = [
   { iso: "1972-01-01T00:00:00Z", label: "1972 +10s" },
@@ -26,8 +28,8 @@ const el = {
   preset: document.getElementById("preset"),
   isoInput: document.getElementById("isoInput"),
   unixInput: document.getElementById("unixInput"),
-  convertBtn: document.getElementById("convertBtn"),
-  convertError: document.getElementById("convertError"),
+  isoValidation: document.getElementById("isoValidation"),
+  unixValidation: document.getElementById("unixValidation"),
   selectedUnix: document.getElementById("selectedUnix"),
   selectedTai: document.getElementById("selectedTai"),
   selectedGps: document.getElementById("selectedGps"),
@@ -35,6 +37,8 @@ const el = {
   gpsUtcOffset: document.getElementById("gpsUtcOffset"),
   timeline: document.getElementById("timeline"),
   timelineCaption: document.getElementById("timelineCaption"),
+  timelineGraph: document.getElementById("timelineGraph"),
+  timelineGraphCaption: document.getElementById("timelineGraphCaption"),
   civilHealth: document.getElementById("civilHealth"),
   atomicHealth: document.getElementById("atomicHealth"),
   civilTrack: document.getElementById("civilTrack"),
@@ -47,6 +51,8 @@ const el = {
 let leap = null;
 let selectedUnixMs = Date.now();
 let simData = null;
+let lastEditedField = "unix";
+let offsetSeries = [];
 
 function fmtMs(value) {
   return `${Math.trunc(value).toLocaleString()} ms`;
@@ -76,23 +82,176 @@ function setPreset() {
   } else if (choice === "lastLeap") {
     selectedUnixMs = Date.parse("2017-01-01T00:00:00Z");
   } else {
+    clearValidation();
     return;
   }
   el.isoInput.value = toIso(selectedUnixMs);
   el.unixInput.value = String(selectedUnixMs);
+  clearValidation();
   renderSelected();
 }
 
-function parseCustomInput() {
-  let unix = Number.parseInt(el.unixInput.value, 10);
-  const isoText = el.isoInput.value.trim();
-  if (!Number.isFinite(unix) && isoText) {
-    unix = Date.parse(isoText);
+function setValidation(field, message) {
+  const isIso = field === "iso";
+  const input = isIso ? el.isoInput : el.unixInput;
+  const target = isIso ? el.isoValidation : el.unixValidation;
+  input.classList.toggle("invalid", Boolean(message));
+  target.classList.toggle("error", Boolean(message));
+  target.textContent = message || "";
+}
+
+function clearValidation() {
+  setValidation("iso", "");
+  setValidation("unix", "");
+}
+
+function parseIsoInput() {
+  const raw = el.isoInput.value.trim();
+  if (!raw) {
+    return { state: "empty" };
   }
+  const isoUtcPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(?:\.\d{1,3})?)?Z$/;
+  if (!isoUtcPattern.test(raw)) {
+    return { state: "invalid", message: "Use UTC ISO format, e.g. 2017-01-01T00:00:00Z" };
+  }
+  const unix = Date.parse(raw);
   if (!Number.isFinite(unix)) {
-    throw new Error("Provide a valid Unix ms value or an ISO UTC timestamp.");
+    return { state: "invalid", message: "Invalid ISO UTC. Example: 2017-01-01T00:00:00Z" };
   }
-  return unix;
+  return { state: "valid", value: unix };
+}
+
+function parseUnixInput() {
+  const raw = el.unixInput.value.trim();
+  if (!raw) {
+    return { state: "empty" };
+  }
+  if (!/^-?\d+$/.test(raw)) {
+    return { state: "invalid", message: "Use integer Unix milliseconds (e.g. 1483228800000)." };
+  }
+  const unix = Number(raw);
+  if (!Number.isFinite(unix)) {
+    return { state: "invalid", message: "Unix milliseconds must be a finite integer." };
+  }
+  return { state: "valid", value: unix };
+}
+
+function applyCustomUnix(unixMs, sourceField) {
+  selectedUnixMs = unixMs;
+  if (sourceField === "iso") {
+    el.unixInput.value = String(Math.trunc(unixMs));
+  } else {
+    el.isoInput.value = toIso(unixMs);
+  }
+  renderSelected();
+}
+
+function handleCustomInput(sourceField) {
+  const isoResult = parseIsoInput();
+  const unixResult = parseUnixInput();
+
+  setValidation("iso", isoResult.state === "invalid" ? isoResult.message : "");
+  setValidation("unix", unixResult.state === "invalid" ? unixResult.message : "");
+
+  if (sourceField === "iso") {
+    if (isoResult.state === "valid") {
+      applyCustomUnix(isoResult.value, "iso");
+    }
+    return;
+  }
+
+  if (unixResult.state === "valid") {
+    applyCustomUnix(unixResult.value, "unix");
+  }
+}
+
+function taiUtcSecondsAt(unixMs) {
+  const taiMs = leap.TAI1900.fromUnix(unixMs);
+  return (taiMs - (unixMs + unixNtp1900Offset)) / 1000;
+}
+
+function buildOffsetSeries() {
+  const points = [];
+  const stepMs = 30 * 24 * 60 * 60 * 1000;
+  for (let unix = timelineStartUnix; unix <= timelineEndUnix; unix += stepMs) {
+    points.push({ unix, offset: taiUtcSecondsAt(unix) });
+  }
+  if (points[points.length - 1].unix !== timelineEndUnix) {
+    points.push({ unix: timelineEndUnix, offset: taiUtcSecondsAt(timelineEndUnix) });
+  }
+  offsetSeries = points;
+}
+
+function drawOffsetGraph() {
+  const canvas = el.timelineGraph;
+  if (!canvas || !offsetSeries.length) {
+    return;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return;
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(240, Math.floor(canvas.clientWidth));
+  const height = Math.max(140, Math.floor(canvas.clientHeight));
+  canvas.width = Math.floor(width * dpr);
+  canvas.height = Math.floor(height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  const pad = { top: 10, right: 10, bottom: 20, left: 44 };
+  const minOffset = Math.min(...offsetSeries.map((p) => p.offset));
+  const maxOffset = Math.max(...offsetSeries.map((p) => p.offset));
+  const spread = Math.max(1, maxOffset - minOffset);
+  const xOf = (unix) => pad.left + ((unix - timelineStartUnix) / (timelineEndUnix - timelineStartUnix)) * (width - pad.left - pad.right);
+  const yOf = (offset) => pad.top + (1 - (offset - minOffset) / spread) * (height - pad.top - pad.bottom);
+
+  ctx.strokeStyle = "rgba(116, 165, 214, 0.24)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i += 1) {
+    const y = pad.top + (i / 4) * (height - pad.top - pad.bottom);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(width - pad.right, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#79d6ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  offsetSeries.forEach((point, i) => {
+    const x = xOf(point.unix);
+    const y = yOf(point.offset);
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.stroke();
+
+  const selectedOffset = taiUtcSecondsAt(selectedUnixMs);
+  const selectedX = xOf(Math.max(timelineStartUnix, Math.min(timelineEndUnix, selectedUnixMs)));
+  const clampedSelectedOffset = Math.max(minOffset, Math.min(maxOffset, selectedOffset));
+  const selectedY = yOf(clampedSelectedOffset);
+  ctx.strokeStyle = "#ffc857";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(selectedX, pad.top);
+  ctx.lineTo(selectedX, height - pad.bottom);
+  ctx.stroke();
+  ctx.fillStyle = "#ffc857";
+  ctx.beginPath();
+  ctx.arc(selectedX, selectedY, 3.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#8eb3da";
+  ctx.font = '11px "IBM Plex Mono", monospace';
+  ctx.fillText(`${minOffset.toFixed(1)}s`, 6, height - pad.bottom + 4);
+  ctx.fillText(`${maxOffset.toFixed(1)}s`, 6, pad.top + 4);
+
+  el.timelineGraphCaption.textContent = `TAI-UTC sampled monthly from 1960 to 2026. Selected offset: ${selectedOffset.toFixed(3)} s`;
 }
 
 function renderOffsets(unixMs, taiMs) {
@@ -104,13 +263,11 @@ function renderOffsets(unixMs, taiMs) {
 }
 
 function renderTimeline() {
-  const min = Date.parse("1960-01-01T00:00:00Z");
-  const max = Date.parse("2026-01-01T00:00:00Z");
   el.timeline.textContent = "";
   const clamp = (x) => Math.max(0, Math.min(100, x));
 
   leapMarks.forEach((m) => {
-    const x = clamp(((Date.parse(m.iso) - min) / (max - min)) * 100);
+    const x = clamp(((Date.parse(m.iso) - timelineStartUnix) / (timelineEndUnix - timelineStartUnix)) * 100);
     const div = document.createElement("div");
     div.className = "mark";
     div.style.left = `${x}%`;
@@ -120,12 +277,13 @@ function renderTimeline() {
     el.timeline.appendChild(div);
   });
 
-  const selectedX = clamp(((selectedUnixMs - min) / (max - min)) * 100);
+  const selectedX = clamp(((selectedUnixMs - timelineStartUnix) / (timelineEndUnix - timelineStartUnix)) * 100);
   const selected = document.createElement("div");
   selected.className = "selected-marker";
   selected.style.left = `${selectedX}%`;
   el.timeline.appendChild(selected);
   el.timelineCaption.textContent = `Selected timestamp: ${toIso(selectedUnixMs)} (${Math.trunc(selectedX)}% across 1960-2026 window)`;
+  drawOffsetGraph();
 }
 
 function renderSelected() {
@@ -271,19 +429,21 @@ function renderLive() {
 function bindEvents() {
   el.preset.addEventListener("change", () => {
     setPreset();
-    el.convertError.textContent = "";
   });
 
-  el.convertBtn.addEventListener("click", () => {
-    try {
-      selectedUnixMs = parseCustomInput();
-      el.preset.value = "custom";
-      el.convertError.textContent = "";
-      renderSelected();
-    } catch (err) {
-      el.convertError.textContent = err.message || "Invalid input.";
-    }
+  el.isoInput.addEventListener("input", () => {
+    el.preset.value = "custom";
+    lastEditedField = "iso";
+    handleCustomInput(lastEditedField);
   });
+
+  el.unixInput.addEventListener("input", () => {
+    el.preset.value = "custom";
+    lastEditedField = "unix";
+    handleCustomInput(lastEditedField);
+  });
+
+  window.addEventListener("resize", drawOffsetGraph);
 }
 
 function startLiveLoop() {
@@ -304,6 +464,7 @@ function main() {
   if (!leap || !leap.TAI1900 || !leap.GPStime) {
     throw new Error("LeapSeconds API not found. Ensure leapseconds.js is loaded before app.js.");
   }
+  buildOffsetSeries();
   bindEvents();
   setPreset();
   renderSim();
