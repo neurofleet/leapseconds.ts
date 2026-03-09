@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leap-Second Time Lab</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <header class="page-header">
+    <p class="kicker">Leap-Second Time Lab</p>
+    <h1>TAI/GPS Time for Networked Swarm SLAM</h1>
+    <p class="subtitle">
+      Compare POSIX/NTP civil time with atomic-correlated time to see why event ordering can fail in moving multi-agent systems.
+    </p>
+  </header>
+
+  <main class="layout">
+    <section class="card">
+      <h2>Live Clocks</h2>
+      <p class="small">Continuous values sampled from browser time and <code>leapseconds.js</code>.</p>
+      <div class="clock-grid">
+        <article class="metric unix">
+          <h3>Unix (UTC/POSIX)</h3>
+          <div id="unixNow" class="value">-</div>
+          <div id="unixNowIso" class="subvalue">-</div>
+        </article>
+        <article class="metric tai">
+          <h3>TAI1900</h3>
+          <div id="taiNow" class="value">-</div>
+          <div id="taiNowDelta" class="subvalue">-</div>
+        </article>
+        <article class="metric gps">
+          <h3>GPS Time</h3>
+          <div id="gpsNow" class="value">-</div>
+          <div id="gpsNowDelta" class="subvalue">-</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Conversion Lab</h2>
+      <p class="small">Convert arbitrary timestamps: Unix ms/ISO -> TAI1900 -> GPS.</p>
+      <div class="controls">
+        <label>
+          Preset
+          <select id="preset">
+            <option value="now">Now</option>
+            <option value="gpsEpoch">GPS epoch (1980-01-06)</option>
+            <option value="lastLeap">Last leap insertion (2017-01-01)</option>
+            <option value="custom">Custom input</option>
+          </select>
+        </label>
+        <label>
+          ISO UTC
+          <input id="isoInput" type="text" placeholder="2017-01-01T00:00:00Z">
+        </label>
+        <label>
+          Unix ms
+          <input id="unixInput" type="number" placeholder="1483228800000">
+        </label>
+        <button id="convertBtn" type="button">Convert</button>
+      </div>
+      <p id="convertError" class="error" role="alert"></p>
+      <div class="result-grid">
+        <div>
+          <span class="label">Selected Unix</span>
+          <code id="selectedUnix">-</code>
+        </div>
+        <div>
+          <span class="label">TAI1900.fromUnix</span>
+          <code id="selectedTai">-</code>
+        </div>
+        <div>
+          <span class="label">GPStime.fromTAI</span>
+          <code id="selectedGps">-</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Offset Insight</h2>
+      <p class="small">Derived offsets at the selected timestamp.</p>
+      <div class="offset-grid">
+        <article>
+          <h3>TAI - UTC</h3>
+          <div id="taiUtcOffset" class="value">-</div>
+        </article>
+        <article>
+          <h3>GPS - UTC</h3>
+          <div id="gpsUtcOffset" class="value">-</div>
+        </article>
+        <article>
+          <h3>GPS - TAI</h3>
+          <div class="value">-19 s</div>
+        </article>
+      </div>
+      <p class="small muted">
+        In this model, GPS is offset from TAI by 19 s. Leap-second table updates shift the civil-time relationships.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Historical Leap Timeline</h2>
+      <div id="timeline" class="timeline"></div>
+      <p id="timelineCaption" class="small muted"></p>
+    </section>
+
+    <section class="card">
+      <h2>Why NTP/POSIX Fails for Swarm SLAM</h2>
+      <p class="small">
+        Multi-agent sensor fusion depends on strict event ordering. Civil clock adjustments can create backwards time steps or cross-agent reordering.
+      </p>
+      <div class="sim-grid">
+        <article>
+          <h3>Civil Timeline (NTP/POSIX)</h3>
+          <div id="civilHealth" class="badge bad">At risk</div>
+          <div id="civilTrack" class="track"></div>
+          <p id="civilStats" class="small"></p>
+        </article>
+        <article>
+          <h3>Atomic Timeline (TAI/GPS-correlated)</h3>
+          <div id="atomicHealth" class="badge good">OK</div>
+          <div id="atomicTrack" class="track"></div>
+          <p id="atomicStats" class="small"></p>
+        </article>
+      </div>
+      <div class="legend">
+        <span class="dot imu"></span> IMU
+        <span class="dot cam"></span> Camera
+        <span class="dot lidar"></span> LiDAR
+      </div>
+      <pre id="simSnippet" class="snippet"></pre>
+    </section>
+  </main>
+
+  <script src="./leapseconds.js" defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>
