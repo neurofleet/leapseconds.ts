@@ -37,6 +37,7 @@ const el = {
   gpsUtcOffset: document.getElementById("gpsUtcOffset"),
   timeline: document.getElementById("timeline"),
   timelineCaption: document.getElementById("timelineCaption"),
+  timelineHoverProbe: document.getElementById("timelineHoverProbe"),
   timelineGraph: document.getElementById("timelineGraph"),
   timelineGraphCaption: document.getElementById("timelineGraphCaption"),
   civilHealth: document.getElementById("civilHealth"),
@@ -53,6 +54,7 @@ let selectedUnixMs = Date.now();
 let simData = null;
 let lastEditedField = "unix";
 let offsetSeries = [];
+let hoverUnixMs = null;
 
 function fmtMs(value) {
   return `${Math.trunc(value).toLocaleString()} ms`;
@@ -170,6 +172,50 @@ function taiUtcSecondsAt(unixMs) {
   return (taiMs - (unixMs + unixNtp1900Offset)) / 1000;
 }
 
+function clampUnix(unixMs) {
+  return Math.max(timelineStartUnix, Math.min(timelineEndUnix, unixMs));
+}
+
+function renderHoverProbe() {
+  if (hoverUnixMs === null) {
+    el.timelineHoverProbe.textContent = "Hover the timeline or graph to probe offset values.";
+    return;
+  }
+  const unix = clampUnix(hoverUnixMs);
+  const taiUtc = taiUtcSecondsAt(unix);
+  const gpsUtc = taiUtc + gpsTaiOffsetSeconds;
+  el.timelineHoverProbe.textContent =
+    `Probe ${toIso(unix)} | TAI-UTC ${fmtSeconds(taiUtc)} | GPS-UTC ${fmtSeconds(gpsUtc)}`;
+}
+
+function setHoverProbe(unixMs) {
+  hoverUnixMs = clampUnix(unixMs);
+  renderHoverProbe();
+  drawOffsetGraph();
+  const marker = el.timeline.querySelector(".hover-marker");
+  if (!marker) {
+    return;
+  }
+  const xPercent = ((hoverUnixMs - timelineStartUnix) / (timelineEndUnix - timelineStartUnix)) * 100;
+  marker.style.left = `${xPercent}%`;
+  marker.classList.add("active");
+}
+
+function clearHoverProbe() {
+  hoverUnixMs = null;
+  renderHoverProbe();
+  drawOffsetGraph();
+  const marker = el.timeline.querySelector(".hover-marker");
+  if (marker) {
+    marker.classList.remove("active");
+  }
+}
+
+function unixFromClientX(clientX, rect) {
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  return timelineStartUnix + ratio * (timelineEndUnix - timelineStartUnix);
+}
+
 function buildOffsetSeries() {
   const points = [];
   const stepMs = 30 * 24 * 60 * 60 * 1000;
@@ -246,6 +292,22 @@ function drawOffsetGraph() {
   ctx.arc(selectedX, selectedY, 3.6, 0, Math.PI * 2);
   ctx.fill();
 
+  if (hoverUnixMs !== null) {
+    const hoverX = xOf(clampUnix(hoverUnixMs));
+    const hoverOffset = taiUtcSecondsAt(clampUnix(hoverUnixMs));
+    const hoverY = yOf(Math.max(minOffset, Math.min(maxOffset, hoverOffset)));
+    ctx.strokeStyle = "#f576da";
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    ctx.moveTo(hoverX, pad.top);
+    ctx.lineTo(hoverX, height - pad.bottom);
+    ctx.stroke();
+    ctx.fillStyle = "#f576da";
+    ctx.beginPath();
+    ctx.arc(hoverX, hoverY, 3.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.fillStyle = "#8eb3da";
   ctx.font = '11px "IBM Plex Mono", monospace';
   ctx.fillText(`${minOffset.toFixed(1)}s`, 6, height - pad.bottom + 4);
@@ -282,6 +344,16 @@ function renderTimeline() {
   selected.className = "selected-marker";
   selected.style.left = `${selectedX}%`;
   el.timeline.appendChild(selected);
+
+  const hover = document.createElement("div");
+  hover.className = "hover-marker";
+  if (hoverUnixMs !== null) {
+    const hoverX = clamp(((clampUnix(hoverUnixMs) - timelineStartUnix) / (timelineEndUnix - timelineStartUnix)) * 100);
+    hover.style.left = `${hoverX}%`;
+    hover.classList.add("active");
+  }
+  el.timeline.appendChild(hover);
+
   el.timelineCaption.textContent = `Selected timestamp: ${toIso(selectedUnixMs)} (${Math.trunc(selectedX)}% across 1960-2026 window)`;
   drawOffsetGraph();
 }
@@ -443,6 +515,18 @@ function bindEvents() {
     handleCustomInput(lastEditedField);
   });
 
+  el.timeline.addEventListener("mousemove", (event) => {
+    const rect = el.timeline.getBoundingClientRect();
+    setHoverProbe(unixFromClientX(event.clientX, rect));
+  });
+  el.timeline.addEventListener("mouseleave", clearHoverProbe);
+
+  el.timelineGraph.addEventListener("mousemove", (event) => {
+    const rect = el.timelineGraph.getBoundingClientRect();
+    setHoverProbe(unixFromClientX(event.clientX, rect));
+  });
+  el.timelineGraph.addEventListener("mouseleave", clearHoverProbe);
+
   window.addEventListener("resize", drawOffsetGraph);
 }
 
@@ -466,6 +550,7 @@ function main() {
   }
   buildOffsetSeries();
   bindEvents();
+  renderHoverProbe();
   setPreset();
   renderSim();
   renderLive();

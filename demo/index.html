@@ -19,7 +19,7 @@
   <main class="layout">
     <section class="card">
       <h2>Live Clocks</h2>
-      <p class="small">Continuous values sampled from browser time and <code>leapseconds.js</code>.</p>
+      <p class="small">Continuous values sampled from browser time and <code>leapseconds.ts</code>.</p>
       <div class="clock-grid">
         <article class="metric unix">
           <h3>Unix (UTC/POSIX)</h3>
@@ -106,6 +106,7 @@
       <h2>Historical Leap Timeline</h2>
       <div id="timeline" class="timeline"></div>
       <p id="timelineCaption" class="small muted"></p>
+      <p id="timelineHoverProbe" class="small hover-probe">Hover the timeline or graph to probe offset values.</p>
       <div class="timeline-graph-wrap">
         <canvas id="timelineGraph" class="timeline-graph" aria-label="TAI minus UTC offset over time"></canvas>
       </div>
