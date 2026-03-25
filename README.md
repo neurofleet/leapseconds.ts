@@ -4,8 +4,6 @@ Correlate NTP/POSIX clock device events with GPS/TAI events.
 
 AGPL
 
-Generated interactive time-lab: https://neurofleet.github.io/leapseconds.ts/demo/index.html
-
 ```typescript
 // src: https://maia.usno.navy.mil/ser7/tai-utc.dat
 // src: https://hpiers.obspm.fr/eop-pc/earthor/utc/TAI-UTC_tab.html
